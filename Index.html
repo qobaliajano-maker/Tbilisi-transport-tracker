@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>თბილისის ტრანსპორტის ტრეკერი</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header {
+            background: white; border-radius: 20px; padding: 20px 30px; margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1); display: flex; justify-content: space-between;
+            align-items: center; flex-wrap: wrap; gap: 15px;
+        }
+        .logo { display:flex; align-items:center; gap:15px; }
+        .logo-icon {
+            width:50px; height:50px; background: linear-gradient(135deg,#667eea,#764ba2);
+            border-radius:12px; display:flex; align-items:center; justify-content:center;
+            font-size:28px;
+        }
+        h1 { font-size:28px; color:#2d3748; margin-bottom:5px; }
+        .subtitle { color:#718096; font-size:14px; }
+        .header-buttons { display:flex; gap:10px; }
+        .btn {
+            padding: 12px 24px; border-radius:12px; border:none; cursor:pointer;
+            font-size:14px; font-weight:600; transition:all 0.3s; display:flex; align-items:center; gap:8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2); color:white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(102,126,234,0.4); }
+        .btn-secondary { background:#edf2f7; color:#4a5568; }
+        .btn-secondary:hover { background:#e2e8f0; }
+        .main-content { display:grid; grid-template-columns:350px 1fr; gap:20px; }
+        .sidebar { display:flex; flex-direction:column; gap:20px; }
+        .card {
+            background:white; border-radius:20px; padding:25px; box-shadow:0 10px 40px rgba(0,0,0,0.1);
+        }
+        .card-title { font-size:20px; font-weight:700; color:#2d3748; margin-bottom:20px; }
+        .route-item {
+            padding:15px; border-radius:12px; margin-bottom:10px; cursor:pointer; transition:all 0.3s;
+            border:2px solid transparent; position:relative; background:#fafafa;
+        }
+        .route-item:hover { transform: translateX(5px); box-shadow:0 5px 15px rgba(0,0,0,0.1); }
+        .route-item.active { border-color:#667eea; background:#f7fafc; }
+        .route-header { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+        .route-number { width:50px; height:50px; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:18px; }
+        .route-info { flex:1; }
+        .route-name { font-weight:600; color:#2d3748; margin-bottom:3px; }
+        .route-type { font-size:12px; color:#718096; }
+        .route-eta { display:flex; align-items:center; gap:5px; font-size:13px; color:#4a5568; margin-top:8px; }
+        .favorite-btn {
+            background:none; border:none; cursor:pointer; font-size:20px; padding:5px; transition:transform 0.2s;
+        }
+        .favorite-btn:hover { transform: scale(1.2); }
+        .stop-item {
+            display:flex; align-items:center; gap:12px; padding:12px; border-radius:10px; margin-bottom:8px;
+            background:#f7fafc; transition:all 0.3s;
+        }
+        .stop-item:hover { background:#edf2f7; transform: translateX(5px); }
+        .stop-icon {
+            width:40px; height:40px; background: linear-gradient(135deg, #fc466b, #3f5efb);
+            border-radius:10px; display:flex; align-items:center; justify-content:center; color:white; font-size:20px;
+        }
+        .stop-info { flex:1; }
+        .stop-name { font-weight:600; color:#2d3748; margin-bottom:3px; }
+        .stop-distance { font-size:12px; color:#718096; }
+        #map { height:600px; border-radius:20px; box-shadow:0 10px 40px rgba(0,0,0,0.1); }
+        .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:15px; margin-top:20px; }
+        .stat-card { background:white; border-radius:15px; padding:20px; text-align:center; box-shadow:0 5px 20px rgba(0,0,0,0.1); }
+        .stat-icon { font-size:35px; margin-bottom:10px; }
+        .stat-number { font-size:32px; font-weight:700; color:#2d3748; margin-bottom:5px; }
+        .stat-label { font-size:13px; color:#718096; }
+        .notification {
+            position: fixed; top:20px; right:20px; background:white; padding:20px 25px; border-radius:15px;
+            box-shadow:0 10px 40px rgba(0,0,0,0.2); display:none; align-items:center; gap:15px; z-index:10000;
+            animation: slideIn 0.3s ease;
+        }
+        .notification.show { display:flex; }
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity:0; } to { transform: translateX(0); opacity:1; }
+        }
+        .notification-icon { font-size:30px; }
+        .notification-content { flex:1; }
+        .notification-title { font-weight:700; color:#2d3748; margin-bottom:5px; }
+        .notification-text { font-size:14px; color:#718096; }
+        @media (max-width:768px) {
+            .main-content { grid-template-columns:1fr; }
+            #map { height:400px; }
+            .stats { grid-template-columns:1fr; }
+        }
+
+        /* focus styles for keyboard users */
+        .route-item:focus { outline: 3px solid rgba(102,126,234,0.25); box-shadow: 0 4px 14px rgba(102,126,234,0.15); }
+        .favorite-btn:focus { outline: 2px solid rgba(0,0,0,0.1); border-radius:6px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon" aria-hidden="true">🚌</div>
+                <div>
+                    <h1>თბილისის ტრანსპორტი</h1>
+                    <p class="subtitle">რეალურ დროში თვალყურის დევნება</p>
+                </div>
+            </div>
+
+            <div class="header-buttons">
+                <button id="notifications-btn" class="btn btn-secondary" aria-pressed="false" aria-label="შეტყობინებები">
+                    🔔 შეტყობინებები
+                </button>
+                <button id="location-btn" class="btn btn-primary" aria-label="ჩემი ლოკაცია">
+                    📍 ჩემი ლოკაცია
+                </button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="card">
+                    <h2 class="card-title">მარშრუტები</h2>
+                    <div id="routes-list" role="list" aria-label="მარშრუტების სია"></div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">უახლოესი გაჩერებები</h2>
+                    <div id="stops-list" role="list" aria-label="უახლოესი გაჩერებები"></div>
+                </div>
+            </div>
+
+            <div>
+                <div id="map" aria-label="რუკა"></div>
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">🚌</div>
+                        <div class="stat-number" id="active-buses">0</div>
+                        <div class="stat-label">აქტიური ტრანსპორტი</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📍</div>
+                        <div class="stat-number" id="total-stops">0</div>
+                        <div class="stat-label">გაჩერება</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⭐</div>
+                        <div class="stat-number" id="favorites-count">0</div>
+                        <div class="stat-label">რჩეული</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification" role="status" aria-live="polite">
+        <div class="notification-icon" aria-hidden="true">🚌</div>
+        <div class="notification-content">
+            <div class="notification-title" id="notif-title">შეტყობინება</div>
+            <div class="notification-text" id="notif-text">ტექსტი</div>
+        </div>
+    </div>
+
+    <script>
+        // Data (static simulation data)
+        const routes = [
+            { id: 1, number: '37', name: 'სამგორი - დიღომი', color: '#3B82F6', type: 'ავტობუსი' },
+            { id: 2, number: '55', name: 'ვარკეთილი - დელისი', color: '#10B981', type: 'ავტობუსი' },
+            { id: 3, number: '121', name: 'ისანი - საბურთალო', color: '#F59E0B', type: 'მიკროავტობუსი' },
+            { id: 4, number: '17', name: 'ავლაბარი - ვაზისუბანი', color: '#EF4444', type: 'ავტობუსი' },
+            { id: 5, number: '61', name: 'ორთაჭალა - გლდანი', color: '#8B5CF6', type: 'ავტობუსი' },
+            { id: 6, number: '71', name: 'დიდუბე - ვარკეთილი', color: '#EC4899', type: 'ავტობუსი' },
+        ];
+
+        const stops = [
+            { id: 1, name: 'სამგორის მეტრო', lat: 41.7075, lng: 44.8476 },
+            { id: 2, name: 'ისანის მეტრო', lat: 41.7235, lng: 44.8245 },
+            { id: 3, name: 'რუსთაველის მეტრო', lat: 41.7094, lng: 44.7922 },
+            { id: 4, name: 'სტაციის მოედანი', lat: 41.6938, lng: 44.8013 },
+            { id: 5, name: 'დიღომი', lat: 41.7530, lng: 44.7550 },
+            { id: 6, name: 'დელისი', lat: 41.7889, lng: 44.7689 },
+            { id: 7, name: 'ავლაბარი', lat: 41.6928, lng: 44.8117 },
+            { id: 8, name: 'ვაზისუბანი', lat: 41.7125, lng: 44.8625 },
+        ];
+
+        // App state and constants
+        const STORAGE_FAVORITES_KEY = 'tt_favorites_v1';
+        const STORAGE_SELECTED_ROUTE_KEY = 'tt_selectedRoute_v1';
+
+        let map, userMarker = null, busMarkers = [], selectedRoute = null, favorites = [];
+        let notificationsEnabled = false;
+        let buses = [];
+        let notificationTimeoutId = null;
+
+        // Initialize map and UI
+        function initMap() {
+            map = L.map('map').setView([41.7151, 44.8271], 12);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            stops.forEach(stop => {
+                L.marker([stop.lat, stop.lng], {
+                    icon: L.divIcon({
+                        className: 'stop-marker',
+                        html: '<div style="background: #FC466B; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">📍</div>',
+                        iconSize: [30, 30]
+                    })
+                }).addTo(map).bindPopup(`<b>${stop.name}</b><br>გაჩერება`);
+            });
+
+            updateStats();
+        }
+
+        // Simulate buses and render markers
+        function simulateBuses() {
+            // remove previous markers
+            busMarkers.forEach(marker => map.removeLayer(marker));
+            busMarkers = [];
+
+            // create new simulated buses
+            buses = routes.flatMap(route => {
+                const count = Math.floor(Math.random() * 3) + 2;
+                return Array.from({ length: count }, (_, i) => ({
+                    routeId: route.id,
+                    routeNumber: route.number,
+                    routeName: route.name,
+                    lat: 41.7151 + (Math.random() - 0.5) * 0.08,
+                    lng: 44.8271 + (Math.random() - 0.5) * 0.08,
+                    speed: Math.floor(Math.random() * 40) + 20,
+                    passengers: Math.floor(Math.random() * 100),
+                    color: route.color,
+                    id: `${route.id}-${i}`
+                }));
+            });
+
+            buses.forEach(bus => {
+                const marker = L.marker([bus.lat, bus.lng], {
+                    icon: L.divIcon({
+                        className: 'bus-marker',
+                        html: `<div style="background: ${bus.color}; width: 40px; height: 40px; border-radius: 10px; border: 3px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">${bus.routeNumber}</div>`,
+                        iconSize: [40, 40]
+                    })
+                }).addTo(map);
+
+                const status = bus.passengers < 40 ? 'თავისუფალია' : bus.passengers < 70 ? 'საშუალო' : 'სავსეა';
+                marker.bindPopup(`
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: 700; color: white; background: ${bus.color}; padding: 10px 20px; border-radius: 10px; margin-bottom: 10px;">${bus.routeNumber}</div>
+                        <div style="font-size: 14px; color: #4a5568;">
+                            <strong>${bus.routeName}</strong><br>
+                            სიჩქარე: ${bus.speed} კმ/სთ<br>
+                            სისავსე: ${status} (${bus.passengers}%)
+                        </div>
+                    </div>
+                `);
+
+                busMarkers.push(marker);
+            });
+
+            updateStats();
+            renderRoutes();
+        }
+
+        // Render the routes list (uses data attributes for delegation)
+        function renderRoutes() {
+            const routesList = document.getElementById('routes-list');
+            if (!routesList) return;
+
+            routesList.innerHTML = routes.map(route => {
+                const routeBuses = buses.filter(b => b.routeId === route.id);
+                const eta = Math.floor(Math.random() * 15) + 5;
+                const isFavorite = favorites.includes(route.id);
+                const activeClass = selectedRoute?.id === route.id ? 'active' : '';
+                const ariaPressed = selectedRoute?.id === route.id ? 'true' : 'false';
+
+                return `
+                    <div class="route-item ${activeClass}" data-route-id="${route.id}" role="button" tabindex="0" aria-pressed="${ariaPressed}">
+                        <div class="route-header">
+                            <div class="route-number" style="background: ${route.color}">
+                                ${route.number}
+                            </div>
+                            <div class="route-info">
+                                <div class="route-name">${route.name}</div>
+                                <div class="route-type">${route.type}</div>
+                            </div>
+                            <button class="favorite-btn" data-route-id="${route.id}" aria-label="${isFavorite ? 'ამოიღე რჩეულებიდან' : 'დაამატე რჩეულებში'}">
+                                ${isFavorite ? '⭐' : '☆'}
+                            </button>
+                        </div>
+                        ${routeBuses.length > 0 ? `
+                            <div class="route-eta">
+                                🕐 ~${eta} წუთში • ${routeBuses.length} ტრანსპორტი
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Render stops list (data attributes + delegation)
+        function renderStops() {
+            const stopsList = document.getElementById('stops-list');
+            if (!stopsList) return;
+
+            stopsList.innerHTML = stops.slice(0, 6).map(stop => {
+                const distance = (Math.random() * 3).toFixed(1);
+                return `
+                    <div class="stop-item" data-lat="${stop.lat}" data-lng="${stop.lng}" role="button" tabindex="0" aria-label="${stop.name}">
+                        <div class="stop-icon" aria-hidden="true">📍</div>
+                        <div class="stop-info">
+                            <div class="stop-name">${stop.name}</div>
+                            <div class="stop-distance">${distance} კმ</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update stats displayed
+        function updateStats() {
+            document.getElementById('active-buses').textContent = buses.length;
+            document.getElementById('total-stops').textContent = stops.length;
+            document.getElementById('favorites-count').textContent = favorites.length;
+        }
+
+        // Select a route (center or fit bounds based on bus count)
+        function selectRoute(routeId) {
+            selectedRoute = routes.find(r => r.id === routeId) || null;
+            // persist selected route id
+            if (selectedRoute) {
+                localStorage.setItem(STORAGE_SELECTED_ROUTE_KEY, String(selectedRoute.id));
+            } else {
+                localStorage.removeItem(STORAGE_SELECTED_ROUTE_KEY);
+            }
+
+            const routeBuses = buses.filter(b => b.routeId === routeId);
+
+            if (routeBuses.length === 1) {
+                // single bus: center and zoom in a bit
+                const b = routeBuses[0];
+                map.setView([b.lat, b.lng], 15);
+            } else if (routeBuses.length > 1) {
+                // multiple: fit bounds
+                const bounds = routeBuses.map(b => [b.lat, b.lng]);
+                try {
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                } catch (err) {
+                    // fallback to center on average
+                    const avgLat = bounds.reduce((s, p) => s + p[0], 0) / bounds.length;
+                    const avgLng = bounds.reduce((s, p) => s + p[1], 0) / bounds.length;
+                    map.setView([avgLat, avgLng], 13);
+                }
+            } else {
+                // no buses: focus on city default
+                map.setView([41.7151, 44.8271], 12);
+            }
+
+            renderRoutes();
+        }
+
+        // Toggle favorite by id (used by delegation)
+        function toggleFavoriteById(routeId) {
+            if (favorites.includes(routeId)) {
+                favorites = favorites.filter(id => id !== routeId);
+                showNotification('ამოიღა რჩეულებიდან', `მარშრუტი ${routes.find(r => r.id === routeId).number}`);
+            } else {
+                favorites.push(routeId);
+                showNotification('დაემატა რჩეულებში', `მარშრუტი ${routes.find(r => r.id === routeId).number}`);
+            }
+            // persist favorites
+            localStorage.setItem(STORAGE_FAVORITES_KEY, JSON.stringify(favorites));
+            renderRoutes();
+            updateStats();
+        }
+
+        // Go to stop coordinates
+        function goToStopFromElement(el) {
+            const lat = parseFloat(el.dataset.lat);
+            const lng = parseFloat(el.dataset.lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                map.setView([lat, lng], 16);
+            }
+        }
+
+        // Geolocation with better error messages
+        function getMyLocation() {
+            if (!navigator.geolocation) {
+                showNotification('შეცდომა', 'ბრაუზერი არ უჭერს მხარს გეოლოკაციას');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    if (userMarker) map.removeLayer(userMarker);
+
+                    userMarker = L.marker([lat, lng], {
+                        icon: L.divIcon({
+                            className: 'user-marker',
+                            html: '<div style="background: #4299e1; width: 20px; height: 20px; border-radius: 50%; border: 4px solid white; box-shadow: 0 0 20px rgba(66, 153, 225, 0.6);"></div>',
+                            iconSize: [20, 20]
+                        })
+                    }).addTo(map).bindPopup('თქვენ აქ ხართ');
+
+                    map.setView([lat, lng], 14);
+                    showNotification('ლოკაცია მოძებნილია', 'თქვენი მდებარეობა განახლებულია');
+                },
+                (error) => {
+                    if (error.code === error.PERMISSION_DENIED) {
+                        showNotification('შეცდომა', 'გთხოვთ დაუშვათ ლოკაცია ამ გვერდისთვის');
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        showNotification('შეცდომა', 'მდებარეობის მიღება შეუძლებელია');
+                    } else if (error.code === error.TIMEOUT) {
+                        showNotification('შეცდომა', 'გეოლოკაციის მოთხოვნა ვადაში ვერ შევიდა');
+                    } else {
+                        showNotification('შეცდომა', 'ლოკაცია ვერ მოიძებნა');
+                    }
+                },
+                { maximumAge: 60000, timeout: 10000 }
+            );
+        }
+
+        // Toggle notifications and set aria-pressed
+        function toggleNotifications() {
+            notificationsEnabled = !notificationsEnabled;
+            const btn = document.getElementById('notifications-btn');
+            btn.setAttribute('aria-pressed', String(notificationsEnabled));
+            if (notificationsEnabled) {
+                showNotification('შეტყობინებები ჩართულია', 'მიიღებთ შეტყობინებებს ტრანსპორტის შესახებ');
+                // simulate a sample follow-up notification
+                setTimeout(() => {
+                    showNotification('ავტობუსი მოახლოვდა', 'მარშრუტი 37 - 2 წუთში');
+                }, 10000);
+            } else {
+                showNotification('შეტყობინებები გამორთულია', '');
+            }
+        }
+
+        // Show notification (clears previous hide timeout so messages are not lost)
+        function showNotification(title, text) {
+            const notif = document.getElementById('notification');
+            document.getElementById('notif-title').textContent = title;
+            document.getElementById('notif-text').textContent = text;
+            notif.classList.add('show');
+
+            // clear previous timeout if any
+            if (notificationTimeoutId) {
+                clearTimeout(notificationTimeoutId);
+            }
+            notificationTimeoutId = setTimeout(() => {
+                notif.classList.remove('show');
+                notificationTimeoutId = null;
+            }, 4000);
+        }
+
+        // Load persisted state (favorites, selected route)
+        function loadState() {
+            try {
+                const favRaw = localStorage.getItem(STORAGE_FAVORITES_KEY);
+                favorites = favRaw ? JSON.parse(favRaw) : [];
+            } catch (err) {
+                favorites = [];
+            }
+
+            try {
+                const sel = localStorage.getItem(STORAGE_SELECTED_ROUTE_KEY);
+                if (sel) {
+                    const id = parseInt(sel, 10);
+                    selectedRoute = routes.find(r => r.id === id) || null;
+                } else {
+                    selectedRoute = null;
+                }
+            } catch (err) {
+                selectedRoute = null;
+            }
+        }
+
+        // Event delegation for routes and stops, keyboard interaction
+        function wireUI() {
+            // Routes list delegation
+            const routesList = document.getElementById('routes-list');
+            routesList.addEventListener('click', function(e) {
+                const favBtn = e.target.closest('.favorite-btn');
+                if (favBtn && favBtn.dataset.routeId) {
+                    const id = parseInt(favBtn.dataset.routeId, 10);
+                    toggleFavoriteById(id);
+                    return;
+                }
+
+                const item = e.target.closest('.route-item');
+                if (item && item.dataset.routeId) {
+                    selectRoute(parseInt(item.dataset.routeId, 10));
+                }
+            });
+
+            // Keyboard support for route items (Enter key)
+            routesList.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    const item = e.target.closest('.route-item');
+                    if (item && item.dataset.routeId) {
+                        e.preventDefault();
+                        selectRoute(parseInt(item.dataset.routeId, 10));
+                    }
+                }
+            });
+
+            // Stops list delegation
+            const stopsList = document.getElementById('stops-list');
+            stopsList.addEventListener('click', function(e) {
+                const item = e.target.closest('.stop-item');
+                if (item) {
+                    goToStopFromElement(item);
+                }
+            });
+            stopsList.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    const item = e.target.closest('.stop-item');
+                    if (item) {
+                        e.preventDefault();
+                        goToStopFromElement(item);
+                    }
+                }
+            });
+
+            // Header buttons
+            document.getElementById('notifications-btn').addEventListener('click', toggleNotifications);
+            document.getElementById('location-btn').addEventListener('click', getMyLocation);
+        }
+
+        // Application bootstrap
+        document.addEventListener('DOMContentLoaded', function() {
+            loadState();
+            initMap();
+            renderStops();
+            wireUI();
+
+            // First simulation (so favorites/selected route reflect current simulated buses)
+            simulateBuses();
+
+            // If a selected route was persisted, re-select it (after simulation)
+            if (selectedRoute) {
+                // ensure selectedRoute is set to route object
+                selectedRoute = routes.find(r => r.id === selectedRoute.id) || null;
+                if (selectedRoute) {
+                    localStorage.setItem(STORAGE_SELECTED_ROUTE_KEY, String(selectedRoute.id));
+                    selectRoute(selectedRoute.id);
+                }
+            }
+
+            // Regular updates
+            setInterval(simulateBuses, 8000);
+
+            // Welcome notification
+            setTimeout(() => {
+                showNotification('მოგესალმებით! 🚌', 'თბილისის ტრანსპორტის ტრეკერში');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
