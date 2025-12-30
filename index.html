@@ -3,104 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoTransport Live</title>
+    <title>GeoTransport</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root { --main: #5d5fef; --bg: #f4f7ff; }
-        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; background: var(--bg); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        /* ზედა თეთრი ბლოკი */
-        .header { background: white; padding: 25px 20px; border-radius: 0 0 35px 35px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); z-index: 1000; }
-        .header h1 { margin: 0; font-size: 22px; color: #2d3142; }
-        .header p { margin: 5px 0 0; font-size: 13px; color: #9196b2; }
-        
-        /* რუკა - იკავებს შუა ნაწილს */
+        :root { --primary: #5d5fef; --bg: #f8f9ff; }
+        body { margin: 0; font-family: sans-serif; background: var(--bg); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .header { background: white; padding: 20px; border-radius: 0 0 30px 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); z-index: 1000; }
+        .header h1 { margin: 0; font-size: 20px; color: #2d3142; }
         #map { flex: 1; width: 100%; z-index: 1; }
-
-        /* ქვედა პანელი */
-        .panel { background: white; height: 45%; border-radius: 40px 40px 0 0; padding: 20px; overflow-y: auto; z-index: 1000; box-shadow: 0 -10px 25px rgba(0,0,0,0.05); }
+        .panel { background: white; height: 45%; border-radius: 35px 35px 0 0; padding: 20px; overflow-y: auto; z-index: 1000; box-shadow: 0 -8px 20px rgba(0,0,0,0.05); }
         .card { background: #fff; border: 1px solid #f0f2f8; padding: 15px; border-radius: 20px; display: flex; align-items: center; margin-bottom: 12px; }
-        .icon { width: 45px; height: 45px; background: var(--main); color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-right: 15px; }
-        .info b { font-size: 15px; display: block; color: #2d3142; }
-        .info span { font-size: 12px; color: #9196b2; }
-
-        /* GPS ძიების ანიმაცია */
-        .loader { text-align: center; color: var(--main); font-weight: bold; padding-top: 50px; }
+        .icon { width: 40px; height: 40px; background: var(--primary); color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 15px; }
     </style>
 </head>
-<body onload="startGPS()">
+<body>
 
 <div class="header">
-    <h1 id="city-title">საქართველოს ტრანსპორტი</h1>
-    <p id="city-subtitle">მიმდინარეობს ლოკაციის დადგენა...</p>
+    <h1 id="loc-name">საქართველოს ტრანსპორტი</h1>
+    <span id="status" style="font-size: 12px; color: #9196b2;">ვეძებ ლოკაციას...</span>
 </div>
 
 <div id="map"></div>
 
 <div class="panel">
-    <b style="font-size: 18px; display: block; margin-bottom: 15px;">უახლოესი გაჩერებები</b>
-    <div id="list" class="loader">გთხოვთ დაეთანხმოთ GPS-ს...</div>
+    <b style="display:block; margin-bottom:15px;">უახლოესი გაჩერებები</b>
+    <div id="list" style="text-align:center; color:#999; padding-top:30px;">
+        ჩართეთ GPS მონაცემების სანახავად
+    </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    let map = L.map('map', { zoomControl: false }).setView([42.3, 42.7], 7);
+    let map = L.map('map', {zoomControl: false}).setView([42.3, 42.7], 7);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+    let userMarker;
 
-    function startGPS() {
+    function init() {
         if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(async pos => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-
+            navigator.geolocation.watchPosition(async (pos) => {
+                const { latitude: lat, longitude: lon } = pos.coords;
+                
+                document.getElementById('status').innerText = "ლოკაცია აქტიურია";
                 map.flyTo([lat, lon], 16);
-                L.circleMarker([lat, lon], {radius: 8, color: '#fff', fillColor: '#5d5fef', fillOpacity: 1, weight: 3}).addTo(map);
+                
+                if (userMarker) map.removeLayer(userMarker);
+                userMarker = L.circleMarker([lat, lon], {radius: 8, color: '#fff', fillColor: '#5d5fef', fillOpacity: 1, weight: 3}).addTo(map);
 
-                // ქალაქის და გაჩერებების პოვნა
-                updateUI(lat, lon);
-            }, err => {
-                document.getElementById('list').innerHTML = "ჩართეთ GPS პარამეტრებიდან";
+                updateData(lat, lon);
+            }, (err) => {
+                document.getElementById('list').innerHTML = "<b style='color:#5d5fef'>გთხოვთ, საიტის პარამეტრებში ჩართოთ Location: Allow</b>";
             }, { enableHighAccuracy: true });
         }
     }
 
-    async function updateUI(lat, lon) {
-        // 1. ქალაქის სახელი (მაგ. ზუგდიდი)
-        const resCity = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-        const dataCity = await resCity.json();
-        const city = dataCity.address.city || dataCity.address.town || dataCity.address.village || "საქართველო";
-        document.getElementById('city-title').innerText = city;
-        document.getElementById('city-subtitle').innerText = "რეალური დროის რეჟიმი";
+    async function updateData(lat, lon) {
+        // ქალაქის ამოცნობა (მაგ. ზუგდიდი)
+        const cityRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+        const cityData = await cityRes.json();
+        document.getElementById('loc-name').innerText = cityData.address.city || cityData.address.town || "ზუგდიდი";
 
-        // 2. გაჩერებები (მთელი საქართველოსთვის)
-        const query = `[out:json];node["highway"="bus_stop"](around:800,${lat},${lon});out;`;
-        const resStops = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
-        const dataStops = await resStops.json();
+        // გაჩერებების ამოღება მთელი საქართველოს ბაზიდან
+        const query = `[out:json];node["highway"="bus_stop"](around:1000,${lat},${lon});out;`;
+        const stopRes = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+        const stopData = await stopRes.json();
         
         const list = document.getElementById('list');
         list.innerHTML = '';
-        list.classList.remove('loader');
 
-        if(dataStops.elements.length === 0) {
-            list.innerHTML = "გაჩერებები ვერ მოიძებნა";
+        if (stopData.elements.length === 0) {
+            list.innerHTML = "ახლომახლო გაჩერებები ვერ მოიძებნა";
             return;
         }
 
-        dataStops.elements.forEach(s => {
+        stopData.elements.forEach(s => {
             list.innerHTML += `
                 <div class="card">
                     <div class="icon">🚏</div>
-                    <div class="info">
-                        <b>${s.tags.name || "გაჩერება"}</b>
-                        <span>მუნიციპალური ტრანსპორტი</span>
+                    <div>
+                        <b>${s.tags.name || "ავტობუსის გაჩერება"}</b><br>
+                        <small style="color:gray">მუნიციპალური ტრანსპორტი</small>
                     </div>
                 </div>`;
         });
     }
+
+    window.onload = init;
 </script>
 </body>
 </html>
+
 
 
 
