@@ -2,127 +2,158 @@
 <html lang="ka">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <meta property="og:title" content="Word Labyrinth 🏆">
-    <meta property="og:description" content="გაიარე 100-ვე დონე და გახდი სიტყვების ოსტატი! 🎮">
-    <meta property="og:image" content="https://img.freepik.com/free-vector/word-concept-illustration_114360-1123.jpg">
+    <meta property="og:title" content="Neon Runner 🏆">
+    <meta property="og:description" content="შეძლებ 1000 ქულის დაგროვებას? ითამაშე ახალი Runner! 🎮">
+    <meta property="og:image" content="https://img.freepik.com/free-vector/pixel-art-night-city-background_23-2148834466.jpg">
     <meta property="og:url" content="https://qobaliajano-maker.github.io/Word-Labyrinth/">
-    <meta property="og:type" content="website">
 
-    <title>Word Labyrinth: 100 Levels</title>
+    <title>Neon Runner PRO</title>
 
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-app-pub-1016750863743823" crossorigin="anonymous"></script>
 
     <style>
-        :root { --primary: #6c5ce7; --accent: #00b894; --gold: #fdcb6e; }
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #0f0c29; background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
-        .game-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border-radius: 30px; width: 100%; max-width: 450px; padding: 30px; border: 1px solid rgba(255,255,255,0.1); text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
-        .progress-box { width: 100%; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; margin: 20px 0; overflow: hidden; }
-        #progress-fill { width: 0%; height: 100%; background: var(--accent); transition: 0.5s; }
-        .hint-text { font-size: 1.3em; margin: 30px 0; line-height: 1.5; min-height: 80px; color: #eee; }
-        input { width: 100%; padding: 15px; border-radius: 12px; border: none; font-size: 1.2em; text-align: center; margin-bottom: 20px; outline: none; }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: 0.3s; margin-bottom: 10px; }
-        .btn-check { background: var(--accent); color: white; }
-        .btn-hint { background: var(--primary); color: white; }
-        .btn:active { transform: scale(0.98); }
-        .status { font-size: 0.9em; color: var(--gold); }
+        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; touch-action: none; }
+        #gameCanvas { display: block; }
+        #ui { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 24px; font-weight: bold; text-shadow: 0 0 10px #00f; }
+        #overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #fff; display: none; }
+        button { padding: 15px 30px; font-size: 20px; background: #00ff88; border: none; border-radius: 10px; cursor: pointer; }
+        .ad-banner { position: absolute; bottom: 0; width: 100%; text-align: center; background: rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
 
-    <div class="game-card">
-        <h1 style="margin:0; font-size: 1.8em;">Word Labyrinth</h1>
-        <div class="status">დონე <span id="current-lvl">1</span> / 100</div>
-        
-        <div class="progress-box">
-            <div id="progress-fill"></div>
-        </div>
-
-        <div class="hint-text" id="question">იტვირთება...</div>
-
-        <input type="text" id="user-ans" placeholder="პასუხი..." autocomplete="off">
-
-        <button class="btn btn-check" onclick="checkAns()">შემოწმება ✅</button>
-        <button class="btn btn-hint" onclick="getHint()">მინიშნება 🎁</button>
-        
-        <div id="msg" style="margin-top: 10px; font-weight: bold;"></div>
+    <div id="ui">Score: <span id="score">0</span></div>
+    
+    <div id="overlay">
+        <h1>GAME OVER! 💀</h1>
+        <button onclick="resetGame()">Try Again 🔄</button>
     </div>
 
-    <div style="margin-top: 30px;">
-        <ins class="adsbygoogle" style="display:inline-block;width:320px;height:50px" 
-             data-ad-client="ca-app-pub-1016750863743823" data-ad-slot="3797162169"></ins>
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="ad-banner">
+        <ins class="adsbygoogle"
+             style="display:inline-block;width:320px;height:50px"
+             data-ad-client="ca-app-pub-1016750863743823"
+             data-ad-slot="3797162169"></ins>
         <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
     </div>
 
     <script>
-        const labyrinth = [
-            {q: "საქართველოს დედაქალაქი", a: "თბილისი"},
-            {q: "ის გვათბობს და ანათებს დღისით", a: "მზე"},
-            {q: "პლანეტა, რომელზეც ვცხოვრობთ", a: "დედამიწა"},
-            {q: "ყველაზე დიდი ოკეანე", a: "წყნარი"},
-            {q: "საქართველოს უმაღლესი მწვერვალი", a: "შხარა"},
-            {q: "ნივთიერება, რომელიც აუცილებელია სიცოცხლისთვის", a: "წყალი"},
-            {q: "მატარებლის სამოძრაო გზა", a: "ლიანდაგი"},
-            {q: "სამეგრელოს მთავარი ქალაქი", a: "ზუგდიდი"},
-            {q: "ცხოველი, რომელსაც სპილოს მსგავსი ხორთუმი აქვს", a: "სპილო"},
-            {q: "რა ჰქვია ქართულ ანბანში პირველ ასოს?", a: "ანი"},
-            // აქ დაემატება დანარჩენი კითხვები...
-            {q: "რა ქვია აჭარის მთავარ ქალაქს?", a: "ბათუმი"},
-            {q: "რომელი ფრინველია მშვიდობის სიმბოლო?", a: "მტრედი"},
-            {q: "ყველაზე სწრაფი ხმელეთის ცხოველი", a: "ავაზა"},
-            {q: "რა ქვია აშშ-ს დედაქალაქს?", a: "ვაშინგტონი"},
-            {q: "მზის სისტემის ყველაზე დიდი პლანეტა", a: "იუპიტერი"},
-            {q: "რომელი ორგანო პასუხობს სუნთქვაზე?", a: "ფილტვები"},
-            {q: "ვინ დაწერა 'ვეფხისტყაოსანი'?", a: "რუსთაველი"},
-            {q: "ყველაზე პატარა ქვეყანა მსოფლიოში", a: "ვატიკანი"},
-            {q: "რა ქვია იაპონიის დედაქალაქს?", a: "ტოკიო"},
-            {q: "რომელი ლითონი გამოიყენება თერმომეტრში?", a: "ვერცხლისწყალი"}
-            // ... (კოდის შემოკლების მიზნით აქ 20 კითხვაა, მაგრამ შენ შეგიძლია ამ სიაში 100-მდე გააგრძელო იმავე ფორმატით)
-        ];
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score");
+        const overlay = document.getElementById("overlay");
 
-        // ლოგიკა შენახვისთვის
-        let lvl = parseInt(localStorage.getItem('savedLvl')) || 0;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-        function loadLvl() {
-            if(lvl < labyrinth.length) {
-                document.getElementById('question').innerText = labyrinth[lvl].q;
-                document.getElementById('current-lvl').innerText = lvl + 1;
-                document.getElementById('progress-fill').style.width = ((lvl/labyrinth.length)*100) + "%";
-                document.getElementById('user-ans').value = "";
-                document.getElementById('msg').innerText = "";
-            } else {
-                document.querySelector('.game-card').innerHTML = "<h1>გილოცავ! 🎉</h1><p>შენ სიტყვების ლაბირინთი დაამარცხე!</p><button class='btn btn-check' onclick='resetGame()'>თავიდან დაწყება</button>";
+        let score = 0;
+        let gameActive = true;
+        let speed = 5;
+
+        const player = { x: 50, y: canvas.height - 100, w: 40, h: 40, dy: 0, jumpPower: 15, grounded: false };
+        const obstacles = [];
+
+        function drawPlayer() {
+            ctx.fillStyle = "#00f2ff";
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#00f2ff";
+            ctx.fillRect(player.x, player.y, player.w, player.h);
+            ctx.shadowBlur = 0;
+        }
+
+        function createObstacle() {
+            if (Math.random() < 0.02) {
+                obstacles.push({ x: canvas.width, y: canvas.height - 90, w: 30, h: 40 });
             }
         }
 
-        function checkAns() {
-            let userVal = document.getElementById('user-ans').value.trim().toLowerCase();
-            if(userVal === labyrinth[lvl].a.toLowerCase()) {
-                lvl++;
-                localStorage.setItem('savedLvl', lvl);
-                document.getElementById('msg').style.color = "#00b894";
-                document.getElementById('msg').innerText = "სწორია! ✨";
-                setTimeout(loadLvl, 800);
-            } else {
-                document.getElementById('msg').style.color = "#ff7675";
-                document.getElementById('msg').innerText = "არასწორია ❌";
+        function update() {
+            if (!gameActive) return;
+
+            // Gravity
+            player.dy += 0.8;
+            player.y += player.dy;
+
+            if (player.y + player.h > canvas.height - 50) {
+                player.y = canvas.height - 50 - player.h;
+                player.dy = 0;
+                player.grounded = true;
             }
+
+            // Obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].x -= speed;
+
+                // Collision Detection
+                if (player.x < obstacles[i].x + obstacles[i].w &&
+                    player.x + player.w > obstacles[i].x &&
+                    player.y < obstacles[i].y + obstacles[i].h &&
+                    player.y + player.h > obstacles[i].y) {
+                    gameOver();
+                }
+
+                if (obstacles[i].x + obstacles[i].w < 0) {
+                    obstacles.splice(i, 1);
+                    score++;
+                    scoreEl.innerText = score;
+                    if (score % 10 === 0) speed += 0.2;
+                }
+            }
+
+            createObstacle();
         }
 
-        function getHint() {
-            alert("რეკლამის ჩატვირთვა... (AdMob Ready სტატუსის შემდეგ)");
-            document.getElementById('user-ans').value = labyrinth[lvl].a[0] + "...";
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Ground
+            ctx.fillStyle = "#333";
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+            drawPlayer();
+
+            ctx.fillStyle = "#ff0055";
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#ff0055";
+            obstacles.forEach(obs => ctx.fillRect(obs.x, obs.y, obs.w, obs.h));
+            ctx.shadowBlur = 0;
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function gameOver() {
+            gameActive = false;
+            overlay.style.display = "block";
         }
 
         function resetGame() {
-            localStorage.clear();
-            location.reload();
+            score = 0;
+            speed = 5;
+            obstacles.length = 0;
+            gameActive = true;
+            overlay.style.display = "none";
+            scoreEl.innerText = "0";
         }
 
-        loadLvl();
+        window.addEventListener("touchstart", () => {
+            if (player.grounded && gameActive) {
+                player.dy = -player.jumpPower;
+                player.grounded = false;
+            }
+        });
+
+        gameLoop();
     </script>
 </body>
 </html>
+
 
 
